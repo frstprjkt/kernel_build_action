@@ -141,6 +141,10 @@ inputs:
     description: 'Include device tree overlay partition image in kernel package'
     required: false
     default: false
+  include-dtb:
+    description: 'Include device tree in kernel package (need kernel support)'
+    required: false
+    default: false
 
 runs:
   using: 'composite'
@@ -471,6 +475,10 @@ runs:
 
             if [ ${{ inputs.include-dtbo }} = true ]; then
                 test -f out/arch/${{ inputs.arch }}/boot/dtbo.img && cp -v out/arch/${{ inputs.arch }}/boot/dtbo.img AnyKernel3/
+            fi
+
+            if [ ${{ inputs.include-dtb }} = true ]; then
+                test -f out/arch/${{ inputs.arch }}/boot/dtb && cp -v out/arch/${{ inputs.arch }}/boot/dtb AnyKernel3/
             fi
 
             rm -rf -v AnyKernel3/.git* AnyKernel3/README.md
