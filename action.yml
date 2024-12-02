@@ -145,6 +145,10 @@ inputs:
     description: 'Include device tree in kernel package (need kernel support)'
     required: false
     default: false
+  package-name:
+    description: 'Custom kernel package name'
+    required: false
+    default: "Anykernel3-flasher.zip"
 
 runs:
   using: 'composite'
@@ -485,8 +489,8 @@ runs:
             if [ ${{ inputs.release }} = false ]; then
                 cp AnyKernel3 ../../build -r -v
             else
-                zip Anykernel3-flasher.zip AnyKernel3/*
-                mv Anykernel3-flasher.zip ../../build -v
+                zip ${{ inputs.package-name }} AnyKernel3/*
+                mv ${{ inputs.package-name }} ../../build -v
             fi
             echo "::endgroup::"
          fi
@@ -504,7 +508,7 @@ runs:
       if: ${{ inputs.release == 'false' && inputs.anykernel3 == 'true' }}
       uses: actions/upload-artifact@v4
       with:
-        name: Anykernel3-flasher
+        name: ${{ inputs.package-name }}
         path: build/*
         if-no-files-found: error
         overwrite: true
