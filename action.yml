@@ -93,6 +93,18 @@ inputs:
     description: 'Use gcc from aosp project.'
     required: true
     default: true
+  other-gcc32-url:
+    required: false
+    default: ''
+  other-gcc32-branch:
+    required: false
+    default: main
+  other-gcc64-url:
+    required: false
+    default: ''
+  other-gcc64-branch:
+    required: false
+    default: main
   aosp-clang:
     description: 'Use clang from aosp project.'
     required: false
@@ -106,14 +118,6 @@ inputs:
   other-clang-branch:
     required: false
     default: main
-  android-ndk:
-    description: 'Use Android NDK to build kernrl (Experimental features)'
-    required: false
-    default: false
-  android-ndk-version:
-    description: 'Please press nember instead of r(e.g. : 26).'
-    required: false
-    default: r21b
   anykernel3:
     description: 'Package kernel use anykernel3.'
     required: false
@@ -199,51 +203,30 @@ runs:
              echo "::endgroup::"
          fi
 
-         if [ ${{ inputs.aosp-clang }} = false ] && [ ${{ inputs.android-ndk }} = false ]; then
-             echo "::group:: Downloading 3rd clang"
-             export OTHER_CLANG_URL=${{ inputs.other-clang-url }}
-             if [[ "$OTHER_CLANG_URL" == *'.tar.gz' ]]; then
-                 aria2c -o clang.tar.gz "$OTHER_CLANG_URL"
-                 mkdir $HOME/clang -p -v
-                 tar -C $HOME/clang/ -zxvf clang.tar.gz
-             elif [[ "$OTHER_CLANG_URL" == *'.zip' ]]; then
-                 aria2c -o clang.zip "$OTHER_CLANG_URL"
-                 mkdir $HOME/clang -p -v
-                 unzip clang.zip -d $HOME/clang/
-             else
-                 git clone "$OTHER_CLANG_URL" $HOME/clang --depth=${{ inputs.depth }} -b ${{ inputs.other-clang-branch }}
-             fi
-             if [ ! -d $HOME/clang/bin/ ]; then
-                 mv $HOME/clang/*/* $HOME/clang/
-             fi
-         fi
-         echo "::endgroup::"
-
-         if [ ${{ inputs.android-ndk }} = true ]; then
-             echo "::group:: Downloading Android NDK"
-             if [ ${{ inputs.aosp-gcc }} = false ]; then
-                 export NDKVER=$(echo "${{ inputs.android-ndk-version }}" | sed 's/r\([0-9]\+\)[a-zA-Z]\?/\1/g')
-                 if [ "$NDKVER" -lt "23" ]; then
-                     aria2c -o android-ndk.zip https://dl.google.com/android/repository/android-ndk-${{ inputs.android-ndk-version }}-linux-x86_64.zip
-                     unzip -d $HOME android-ndk.zip
-                 else
-                     aria2c -o android-ndk.zip https://dl.google.com/android/repository/android-ndk-${{ inputs.android-ndk-version }}-linux.zip
-                     unzip -d $HOME android-ndk.zip
-                 fi
-             else
-                 echo "Please disable aosp-gcc and aosp-clang."
-                 exit 127
-             fi
-             echo "::endgroup::"
-
-             export HOMES=$(pwd)
-             export LLVMS=$HOME/android-ndk-${{ inputs.android-ndk-version }}/toolchains/llvm/prebuilt/linux-x86_64/bin
-             cd $LLVMS
-             for file in $(ls llvm-*); do
-                 ln -s -v "$file" "aarch64-linux-android$(( ${{ inputs.android-version }} + 19 ))-${file#llvm-}"
-             done
-             cd $HOMES
-         fi
+         download_and_extract() {
+             local url=$1
+             local output_name=$2
+             local extract_dir=$3
+             local branch=${4:-main}
+             mkdir -p -v "$extract_dir"
+             case "$url" in
+                 *.tar.gz)
+                     aria2c -o "${output_name}.tar.gz" "$url"
+                     tar -C "$extract_dir" -zxf "${output_name}.tar.gz"
+                     ;;
+                 *.zip)
+                     aria2c -o "${output_name}.zip" "$url"
+                     unzip -q "${output_name}.zip" -d "$extract_dir"
+                     ;;
+                 *.tar.xz)
+                     aria2c -o "${output_name}.tar.xz" "$url"
+                     tar -C "$extract_dir" -xf "${output_name}.tar.xz"
+                     ;;
+                 *)
+                     git clone "$url" "$extract_dir" --depth=${{ inputs.depth }} -b "$branch"
+                     ;;
+             esac
+         }
 
          if [ ${{ inputs.aosp-clang }} = true ]; then
              echo "::group:: Downloading AOSP clang"
@@ -259,24 +242,42 @@ runs:
                  echo "Please enable aosp-gcc."
                  exit 127
              fi
-             echo "::endgroup::"
+         elif [ ! -z ${{ inputs.other-clang-url }} ]; then
+             echo "::group:: Downloading Third party clang"
+             export OTHER_CLANG_URL=${{ inputs.other-clang-url }}
+             download_and_extract "$OTHER_CLANG_URL" "clang" "$HOME/clang" "${{ inputs.other-clang-branch }}"
+             [ ! -d $HOME/clang/bin/ ] && mv $HOME/clang/*/* $HOME/clang/
          fi
+         echo "::endgroup::"
 
          if [ ${{ inputs.aosp-gcc }} = true ]; then
-             echo "::group:: Downloading AOSP GCC"
-             if [ -d $HOME/clang ]; then
-                 mkdir -p -v $HOME/gcc-64
-                 aria2c -o gcc-aarch64.tar.gz https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz
-                 tar -C $HOME/gcc-64 -zxf gcc-aarch64.tar.gz
-                 mkdir -p -v $HOME/gcc-32
-                 aria2c -o gcc-arm.tar.gz https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz
-                 tar -C $HOME/gcc-32 -zxf gcc-arm.tar.gz
-             elif [ ${{ inputs.aosp-clang }} = true ] && [ ${{ inputs.android-ndk }} = true ]; then
-                 echo "Error: The two options aosp-clang and android-ndk will conflict with each other, please turn off one." && exit 15
+             if [ ! -z ${{ inputs.other-gcc64-url }} ] || [ ! -z ${{ inputs.other-gcc32-url }} ]; then
+                 echo "::group:: Downloading Third party gcc"
+                 if [ ! -z ${{ inputs.other-gcc64-url }} ] && [ ! -z ${{ inputs.other-gcc32-url }} ]; then
+                     if [ -d $HOME/clang ]; then
+                         export OTHER_GCC64_URL=${{ inputs.other-gcc64-url }}
+                         export OTHER_GCC32_URL=${{ inputs.other-gcc32-url }}
+                         download_and_extract "$OTHER_GCC64_URL" "gcc-aarch64" "$HOME/gcc-64" "${{ inputs.other-gcc64-branch }}"
+                         download_and_extract "$OTHER_GCC32_URL" "gcc-arm" "$HOME/gcc-32" "${{ inputs.other-gcc32-branch }}"
+                     fi
+                 else
+                     echo "Error: Please enable third party 'gcc64-url' and 'gcc32-url', and ensure that 'clang' directory exists." && exit 15
+                 fi
              else
-                 git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-64
-                 git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-32
+                 echo "::group:: Downloading AOSP GCC"
+                 if [ -d $HOME/clang ]; then
+                     mkdir -p -v $HOME/gcc-64 $HOME/gcc-32
+                     aria2c -o gcc-aarch64.tar.gz https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz
+                     tar -C $HOME/gcc-64 -zxf gcc-aarch64.tar.gz
+                     aria2c -o gcc-arm.tar.gz https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz
+                     tar -C $HOME/gcc-32 -zxf gcc-arm.tar.gz
+                 else
+                     git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-64
+                     git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-32
+                 fi
              fi
+             [ ! -d $HOME/gcc-64/bin/ ] && mv $HOME/gcc-64/*/* $HOME/gcc-64/
+             [ ! -d $HOME/gcc-32/bin/ ] && mv $HOME/gcc-32/*/* $HOME/gcc-32/
          fi
          echo "::endgroup::"
 
@@ -293,13 +294,33 @@ runs:
          fi
 
          cd kernel/${{ inputs.kernel-dir }}
+         for GCC_DIR in "$HOME/gcc-64" "$HOME/gcc-32"; do
+             find "$GCC_DIR"/*/*/bin -type d -exec sh -c 'mv "$(dirname "{}")"/* "$GCC_DIR"/' _ {} \; -quit > /dev/null 2>&1 || true
+             for FILE in "$GCC_DIR/bin"/*; do
+                 FILE_NAME=$(basename "$FILE")
+                 MATCHED_DIR=""
+                 for FOLDER in $(find "$GCC_DIR" -mindepth 1 -maxdepth 1 -type d | sort -r); do
+                     FOLDER_NAME=$(basename "$FOLDER")
+                     [[ "$FILE_NAME" == "$FOLDER_NAME"* ]] && MATCHED_DIR="$FOLDER_NAME" && break
+                 done
+                 [ -n "$MATCHED_DIR" ] && case "$GCC_DIR" in
+                     "$HOME/gcc-64") GCC64="$MATCHED_DIR" ;;
+                     "$HOME/gcc-32") GCC32="$MATCHED_DIR" ;;
+                 esac
+             done
+         done
+
+         [ ! -d "$HOME/gcc-64/aarch64-linux-android" ] && rm -f "$HOME/gcc-64/bin/${GCC64}-ld"
+         [ ! -d "$HOME/gcc-32/arm-linux-androideabi" ] && rm -f "$HOME/gcc-32/bin/${GCC32}-ld"
+         ! grep -qsi "LD *= *ld.lld" Makefile && [ -f "$HOME/clang/bin/ld" ] && rm -f "$HOME/clang/bin/ld"
+
          function version_gt() { test "$(echo -e "$1\n$2" | sort -V | tail -n1)" == "$1"; }
          VERSION=$(grep -E '^VERSION = ' Makefile | awk '{print $3}')
          PATCHLEVEL=$(grep -E '^PATCHLEVEL = ' Makefile | awk '{print $3}')
          SUBLEVEL=$(grep -E '^SUBLEVEL = ' Makefile | awk '{print $3}')
          if [ "$VERSION" -lt 5 ]; then
              touch nongki.txt
-         elif [ "PATCHLEVEL" -lt 10 ]; then
+         elif [ "$PATCHLEVEL" -lt 10 ]; then
              touch nongki.txt
          fi
 
@@ -355,7 +376,7 @@ runs:
              if [ ${{ inputs.nethunter-patch }} = true ]; then
                  aria2c https://github.com/dabao1955/kernel_build_action/raw/main/nethunter/add-wifi-injection.patch && git apply add-wifi-injection.patch
                  aria2c apply https://github.com/dabao1955/kernel_build_action/raw/main/nethunter/fix-ath9k-naming-conflict.patch && git apply fix-ath9k-naming-confict.patch
-                 if [ "$SUBLEVEL" -lt "19" ]; then
+                 if [ "$PATCHLEVEL" -lt "19" ]; then
                      aria2c https://github.com/dabao1955/kernel_build_action/raw/main/nethunter/add-wifi-injection-4.14.patch && git apply add-wifi-injection-4.14.patch
                  fi
              else
@@ -400,14 +421,9 @@ runs:
          COMMAND="make -j$(nproc --all) ${{ inputs.config }} ARCH=${{ inputs.arch }} all ${{ inputs.extra-cmd }} O=out"
          if [ -d $HOME/clang ]; then
               COMMAND+=" PATH=$HOME/clang/bin:$PATH"
-         elif [ ${{ inputs.android-ndk }} = true ]; then
-              export PATH=$CLANG_PATH/bin:$PATH
-              COMMAND+=" CLANG_PATH=$HOME/android-ndk-${{ inputs.android-ndk-version }}/toolchains/llvm/prebuilt/linux-x86_64"
          fi
          if [ ${{ inputs.aosp-gcc }} = true ]; then
-             COMMAND+=" CROSS_COMPILE=$HOME/gcc-64/bin/aarch64-linux-android- CROSS_COMPILE_ARM32=$HOME/gcc-32/bin/arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu-"
-         elif [ ${{ inputs.android-ndk }} = true ]; then
-             COMMAND+=" CROSS_COMPILE=$CLANG_PATH/bin/llvm- CROSS_COMPILE_ARM32=$CLANG_PATH/bin/llvm-"
+             COMMAND+=" CROSS_COMPILE=$HOME/gcc-64/bin/${GCC64}- CROSS_COMPILE_ARM32=$HOME/gcc-32/bin/${GCC32}- CLANG_TRIPLE=aarch64-linux-gnu-"
          fi
          if [ -d $HOME/clang ]; then
              if [ ${{ inputs.ccache }} = true ]; then
@@ -417,10 +433,10 @@ runs:
              fi
          else
              if [ ${{ inputs.ccache }} = true ]; then
-                 if [ -d $HOME/gcc-64 ]; then
-                     COMMAND+=" CC='ccache $HOME/gcc-64/bin/aarch64-linux-android-gcc'"
+                 if [ -n "${GCC64}" ]; then
+                     COMMAND+=" CC='ccache $HOME/gcc-64/bin/${GCC64}-gcc'"
                  else
-                     COMMAND+=" CC='ccache $HOME/gcc-32/bin/arm-linux-androidabeihf-gcc'"
+                     COMMAND+=" CC='ccache $HOME/gcc-32/bin/${GCC32}-gcc'"
                  fi
              fi
          fi
@@ -428,7 +444,7 @@ runs:
          ${COMMAND}
          echo "::endgroup::"
 
-         unset USE_CCACHE CLANG_TRIPLE CROSS_COMPILE_ARM32 CROSS_COMPILE CLANG_PATH HOMES SUBLEVEL KVER COMMAND SWAP_FILE SUBLEVEL PATCHLEVEL VERSION
+         unset USE_CCACHE CLANG_TRIPLE CROSS_COMPILE_ARM32 CROSS_COMPILE CLANG_PATH HOMES KVER COMMAND SWAP_FILE SUBLEVEL PATCHLEVEL VERSION GCC_DIR FILE FILE_NAME MATCHED_DIR FOLDER FOLDER_NAME GCC64 GCC32
 
          if [ ${{ inputs.anykernel3 }} = false ]; then
             echo "::group:: Preparing to Upload boot.img"
@@ -466,7 +482,7 @@ runs:
                 git clone https://github.com/osm0sis/AnyKernel3
                 sed -i 's!BLOCK=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;!BLOCK=auto;!g' AnyKernel3/anykernel.sh
                 sed -i 's/do.devicecheck=1/do.devicecheck=0/g' AnyKernel3/anykernel.sh
-                sed -i 's/is_slot_device=0;/IS_SLOT_DEVICE=auto;/g' AnyKernel3/anykernel.sh
+                sed -i 's/IS_SLOT_DEVICE=0;/IS_SLOT_DEVICE=auto;/g' AnyKernel3/anykernel.sh
             fi
 
             if [ -f out/arch/${{ inputs.arch }}/boot/Image.*-dtb ]; then
