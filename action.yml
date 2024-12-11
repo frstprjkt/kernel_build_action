@@ -152,7 +152,7 @@ inputs:
   package-name:
     description: 'Custom kernel package name'
     required: false
-    default: "Anykernel3-flasher.zip"
+    default: "Anykernel3-flasher"
 
 runs:
   using: 'composite'
@@ -505,8 +505,8 @@ runs:
             if [ ${{ inputs.release }} = false ]; then
                 cp AnyKernel3 ../../build -r -v
             else
-                zip ${{ inputs.package-name }} AnyKernel3/*
-                mv ${{ inputs.package-name }} ../../build -v
+                zip ${{ inputs.package-name }}.zip AnyKernel3/*
+                mv ${{ inputs.package-name }}.zip ../../build -v
             fi
             echo "::endgroup::"
          fi
