@@ -92,7 +92,7 @@ inputs:
   aosp-gcc:
     description: 'Use gcc from aosp project.'
     required: true
-    default: true
+    default: false
   other-gcc32-url:
     required: false
     default: ''
