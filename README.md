@@ -102,6 +102,7 @@ Or use the [preset workflow file](https://github.com/dabao1955/kernel_build_acti
 | access-token | false | Please fill it if you want to release kernel | ghp_xxxxxx |
 | bootimg-url | false | A URL that can download the local boot.img | https://127.0.0.1/boot.img |
 | extra-cmd | false | Compile the kernel with extra options, such as LD=ld.lld | AS=llvm-as |
+| custom-package-name | false | Custom name for kernel package | Anykernel3-flasher |
 
 ## FAQ
 > [!CAUTION]
