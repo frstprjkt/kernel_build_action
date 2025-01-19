@@ -113,6 +113,10 @@ inputs:
     required: false
   extra-cmd:
     required: false
+  custom-package-name:
+    description: 'Custom AnyKernel3 package name'
+    required: false
+    default: Anykernel3-flasher
 
 runs:
   using: 'composite'
@@ -602,12 +606,15 @@ runs:
             test -f out/arch/${{ inputs.arch }}/boot/dtbo.img && cp -v out/arch/${{ inputs.arch }}/boot/dtbo.img AnyKernel3/
             test -f out/arch/${{ inputs.arch }}/boot/dtb && cp -v out/arch/${{ inputs.arch }}/boot/dtb AnyKernel3/
 
+            CUSTOM_PACKAGE_NAME=${{ inputs.custom-package-name }}
+            echo "kernel-built-package=$CUSTOM_PACKAGE_NAME" >> $GITHUB_ENV
+
             rm -rf -v AnyKernel3/.git* AnyKernel3/README.md
             mkdir -p -v ../../build
             if [ "${{ inputs.release }}" = "false" ]; then
                 cp -r -v AnyKernel3/* ../../build
             else
-                cd AnyKernel3 && zip -r Anykernel3-flasher.zip ./* && mv -v Anykernel3-flasher.zip .. && cd .. && mv -v Anykernel3-flasher.zip ../../build/
+                cd AnyKernel3 && zip -r $CUSTOM_PACKAGE_NAME.zip ./* && mv -v $CUSTOM_PACKAGE_NAME.zip .. && cd .. && mv -v $CUSTOM_PACKAGE_NAME.zip ../../build/
             fi
             echo "::endgroup::"
         fi
@@ -625,7 +632,7 @@ runs:
       if: ${{ inputs.release == 'false' && inputs.anykernel3 == 'true' }}
       uses: actions/upload-artifact@v4
       with:
-        name: Anykernel3-flasher
+        name: ${{ env.kernel-built-package }}
         path: build/*
         if-no-files-found: error
         overwrite: true

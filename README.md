@@ -103,6 +103,7 @@ Or use the [preset workflow file](https://github.com/dabao1955/kernel_build_acti
 | access-token | false | GitHub access token (needed for auto release) | ghp_xxxxxx |
 | bootimg-url | false | URL to download local boot.img (required if anykernel3 = false) | https://127.0.0.1/boot.img |
 | extra-cmd | false | Compile the kernel with extra build options | LD=ld.lld |
+| custom-package-name | false | Custom name for AnyKernel3 package | Anykernel3-flasher |
 
 ## FAQ
 > [!CAUTION]
