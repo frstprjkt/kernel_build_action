@@ -322,7 +322,11 @@ runs:
                 echo "KernelSU has been initialized,skipped."
             else
                 if [ ${{ inputs.ksu-other }} = true ]; then
-                    curl -SsL "${{ inputs.ksu-url }}/raw/${{ inputs.ksu-version }}/kernel/setup.sh" | bash -s ${{ inputs.ksu-version }}
+                    if [[ ${{ inputs.ksu-url }} == *"raw"* ]]; then
+                        curl -SsL "${{ inputs.ksu-url }}" | bash -s ${{ inputs.ksu-version }}
+                    else
+                        curl -SsL "${{ inputs.ksu-url }}/raw/${{ inputs.ksu-version }}/kernel/setup.sh" | bash -s ${{ inputs.ksu-version }}
+                    fi
                 else
                     echo "Kernel version: $VERSION.$PATCHLEVEL.$SUBLEVEL"
                     if [ -f nongki.txt ]; then
