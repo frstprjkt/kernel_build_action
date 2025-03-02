@@ -134,9 +134,6 @@ inputs:
     description: "After the kernel compilation is completed, it will be automatically published to the releases page"
     required: false
     default: false
-  access-token:
-    description: 'PAT with repository scope (https://github.com/settings/tokens)'
-    required: false
   extra-cmd:
     description: 'Extra options of building kernel.'
     required: false
