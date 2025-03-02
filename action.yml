@@ -9,6 +9,14 @@ inputs:
   kernel-url:
     description: 'Kernel Source Url'
     required: true
+  kernel-private:
+    description: 'Enable if your kernel source is private'
+    required: false
+    default: false
+  git-username:
+    required: false
+  access-token:
+    required: false
   depth:
     required: false
     default: 1
@@ -273,7 +281,12 @@ runs:
          echo "::endgroup::"
 
          echo "::group:: Pulling Kernel Source"
-         git clone --recursive ${{ inputs.kernel-url }} -b "${{ inputs.kernel-branch }}" --depth=${{ inputs.depth }} kernel/${{ inputs.kernel-dir }}
+         if [ "${{ inputs.kernel-private }}" = true ]; then
+             export KERNEL_URL="$(echo ${{ inputs.kernel-url }} | sed -E "s#^(https://)github.com/#\1${{ inputs.git-username }}:${{ inputs.access-token }}@github.com/#")"
+         else
+             export KERNEL_URL="${{ inputs.kernel-url }}"
+         fi
+         git clone --recursive $KERNEL_URL -b "${{ inputs.kernel-branch }}" --depth=${{ inputs.depth }} kernel/${{ inputs.kernel-dir }}
          echo "::endgroup::"
 
          if [ "${{ inputs.vendor }}" = true ]; then
@@ -465,7 +478,7 @@ runs:
          ${COMMAND}
          echo "::endgroup::"
 
-         unset CMD_PATH CMD_CC CMD_CLANG_TRIPLE CMD_CROSS_COMPILE CMD_CROSS_COMPILE_ARM32 USE_CCACHE CLANG_TRIPLE CROSS_COMPILE_ARM32 CROSS_COMPILE CLANG_PATH HOMES KVER COMMAND SWAP_FILE SUBLEVEL PATCHLEVEL VERSION GCC_DIR FILE FILE_NAME MATCHED_DIR FOLDER FOLDER_NAME GCC64 GCC32 NEED_GCC AOSP_CLANG_URL OTHER_CLANG_URL AOSP_GCC64_URL AOSP_GCC32_URL AOSP_GCC_BRANCH OTHER_GCC64_URL OTHER_GCC32_URL
+         unset CMD_PATH CMD_CC CMD_CLANG_TRIPLE CMD_CROSS_COMPILE CMD_CROSS_COMPILE_ARM32 USE_CCACHE CLANG_TRIPLE CROSS_COMPILE_ARM32 CROSS_COMPILE CLANG_PATH HOMES KVER COMMAND SWAP_FILE SUBLEVEL PATCHLEVEL VERSION GCC_DIR FILE FILE_NAME MATCHED_DIR FOLDER FOLDER_NAME GCC64 GCC32 NEED_GCC AOSP_CLANG_URL OTHER_CLANG_URL AOSP_GCC64_URL AOSP_GCC32_URL AOSP_GCC_BRANCH OTHER_GCC64_URL OTHER_GCC32_URL KERNEL_URL
 
          if [ ${{ inputs.anykernel3 }} = false ]; then
             echo "::group:: Preparing to Upload boot.img"
