@@ -145,6 +145,22 @@ inputs:
     description: 'Custom AnyKernel3 package name'
     required: false
     default: Anykernel3-flasher
+  telegram-upload:
+    description: 'Upload kernel package to Telegram.'
+    required: false
+    default: false
+  telegram-to:
+    description: 'Enter Telegram chat ID (Required for Telegram upload).'
+    required: false
+  telegram-api-id:
+    description: 'Enter Telegram API ID (Required for Telegram upload).'
+    required: false
+  telegram-api-hash:
+    description: 'Enter Telegram API hash (Required for Telegram upload).'
+    required: false
+  telegram-token:
+    description: 'Enter Telegram authorization bot token (Required for Telegram upload).'
+    required: false
 
 runs:
   using: 'composite'
@@ -547,6 +563,17 @@ runs:
         path: build/*
         if-no-files-found: error
         overwrite: true
+
+    - id: uploadat
+      if: ${{ inputs.telegram-upload == 'true' && inputs.anykernel3 == 'true' }}
+      uses: xz-dev/TelegramFileUploader@v1.1.1
+      with:
+        to-who: ${{ inputs.telegram-to }}
+        files: ${{ env.kernel-built-package }}
+      env:
+        API_ID: ${{ inputs.telegram-api-id }}
+        API_HASH: ${{ inputs.telegram-api-hash }}
+        BOT_TOKEN: ${{ inputs.telegram-token }}
 
     - id: release
       if: inputs.release == 'true'
