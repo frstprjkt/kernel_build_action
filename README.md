@@ -103,6 +103,9 @@ Or use the [preset workflow file](https://github.com/dabao1955/kernel_build_acti
 | bootimg-url | false | A URL that can download the local boot.img | https://127.0.0.1/boot.img |
 | extra-cmd | false | Compile the kernel with extra options, such as LD=ld.lld | AS=llvm-as |
 | custom-package-name | false | Custom name for kernel package | Anykernel3-flasher |
+| telegram-upload | false | Upload kernel package into Telegram | false |
+| telegram-chat-id | false | Set Telegram chat ID for uploading purpose | -100xxxxxxxx |
+| telegram-bot-token | false | Set Telegram bot token for uploading purpose | xxx:xxxxxx |
 
 ## FAQ
 > [!CAUTION]

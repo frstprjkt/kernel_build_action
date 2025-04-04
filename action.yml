@@ -145,6 +145,16 @@ inputs:
     description: 'Custom AnyKernel3 package name'
     required: false
     default: Anykernel3-flasher
+  telegram-upload:
+    description: 'Upload kernel package into Telegram'
+    required: false
+    default: false
+  telegram-chat-id:
+    description: 'Set Telegram chat ID for uploading purpose'
+    required: false
+  telegram-bot-token:
+    description: 'Set Telegram bot token for uploading purpose'
+    required: false
 
 runs:
   using: 'composite'
@@ -528,6 +538,12 @@ runs:
                 mv -v *.zip ../../build
             fi
             echo "::endgroup::"
+         fi
+
+         if [ "${{ inputs.telegram-upload }}" = true ]; then
+             echo "::group:: Uploading kernel package into Telegram"
+             curl -F document=@$(realpath../../build/*.zip) "https://api.telegram.org/bot${{ inputs.telegram-bot-token }}/sendDocument" -F chat_id="${{ inputs.telegram-chat-id }}" > /dev/null 2>&1
+             echo "::endgroup::"
          fi
 
     - id: uploadi
