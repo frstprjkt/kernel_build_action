@@ -63,6 +63,10 @@ inputs:
     description: 'Build KernelSU as a loadable kernel module'
     required: false
     default: false
+  ksu-skip-patch:
+    description: 'Skip kernel patching for KernelSU'
+    required: false
+    default: false
   disable-lto:
     description: 'Disable LTO configs for configs.'
     required: false
@@ -317,6 +321,8 @@ runs:
             elif [ -f nongki.txt ]; then
                 if grep -q "CONFIG_KPROBES=y" "arch/${{ inputs.arch }}/configs/${{ inputs.config }}" ; then
                     echo "CONFIG_KPROBES is enabled, skip patch."
+                elif [ ${{ inputs.ksu-skip-patch }} = true ]; then
+                    echo "ksu-skip-patch is enabled, skip patch."
                 else
                     curl -SsL https://github.com/dabao1955/kernel_build_action/raw/main/kernelsu/apply_cocci.sh | bash
                 fi
