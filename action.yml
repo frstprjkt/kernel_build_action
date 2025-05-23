@@ -54,6 +54,10 @@ inputs:
   ksu-lkm:
     required: false
     default: false
+  ksu-skip-patch:
+    description: 'Skip kernel patching for KernelSU'
+    required: false
+    default: false
   disable-lto:
     required: false
     default: false
@@ -374,6 +378,8 @@ runs:
                 # Apply patches for non-GKI kernels
                 if grep -q "CONFIG_KPROBES=y" "$CONFIG_FILE" 2>/dev/null; then
                     echo "CONFIG_KPROBES is enabled, skip patch."
+                elif [ ${{ inputs.ksu-skip-patch }} = true ]; then
+                    echo "ksu-skip-patch is enabled, skip patch."
                 else
                     if curl -sSLf "${{ github.action_path }}/kernelsu/apply_cocci.sh" -o /tmp/apply_cocci.sh; then
                         bash /tmp/apply_cocci.sh || echo "Warning: Failed to apply KernelSU patches"
