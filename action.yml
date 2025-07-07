@@ -117,6 +117,9 @@ inputs:
     required: false
   extra-cmd:
     required: false
+  include-dtbo:
+    description: Include DTB/O on your kernel build.
+    required: false
   custom-package-name:
     description: 'Custom AnyKernel3 package name'
     required: false
@@ -609,8 +612,10 @@ runs:
                 cp out/arch/${{ inputs.arch }}/boot/Image AnyKernel3/ -rv
             fi
 
-            test -f out/arch/${{ inputs.arch }}/boot/dtbo.img && cp -v out/arch/${{ inputs.arch }}/boot/dtbo.img AnyKernel3/
-            test -f out/arch/${{ inputs.arch }}/boot/dtb && cp -v out/arch/${{ inputs.arch }}/boot/dtb AnyKernel3/
+            if [ ${{ inputs.include-dtbo }} = true ]; then
+                test -f out/arch/${{ inputs.arch }}/boot/dtbo.img && cp -v out/arch/${{ inputs.arch }}/boot/dtbo.img AnyKernel3/
+                test -f out/arch/${{ inputs.arch }}/boot/dtb && cp -v out/arch/${{ inputs.arch }}/boot/dtb AnyKernel3/
+            fi
 
             CUSTOM_PACKAGE_NAME=${{ inputs.custom-package-name }}
             echo "kernel-built-package=$CUSTOM_PACKAGE_NAME" >> $GITHUB_ENV
