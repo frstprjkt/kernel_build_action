@@ -506,13 +506,7 @@ runs:
                 sed -i 's/IS_SLOT_DEVICE=0;/IS_SLOT_DEVICE=auto;/g' AnyKernel3/anykernel.sh
             fi
 
-            if [ -f out/arch/${{ inputs.arch }}/boot/Image.*-dtb ]; then
-                cp out/arch/${{ inputs.arch }}/boot/Image.*-dtb AnyKernel3/ -rv
-            elif [ -f out/arch/${{ inputs.arch }}/boot/Image.* ]; then
-                cp out/arch/${{ inputs.arch }}/boot/Image.* AnyKernel3/ -rv
-            else
-                cp out/arch/${{ inputs.arch }}/boot/Image AnyKernel3/ -rv
-            fi
+            cp out/arch/${{ inputs.arch }}/boot/Image AnyKernel3/ -rv
 
             if [ ${{ inputs.include-dtbo }} = true ]; then
                 test -f out/arch/${{ inputs.arch }}/boot/dtbo.img && cp -v out/arch/${{ inputs.arch }}/boot/dtbo.img AnyKernel3/
