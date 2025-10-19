@@ -623,9 +623,7 @@ runs:
                     echo "Failed to copy DTBO image. File not found."
                 fi
 
-                if [ -f out/arch/${{ inputs.arch }}/boot/dtb.img ]; then
-                    cp out/arch/${{ inputs.arch }}/boot/dtb.img AnyKernel3/ -rv
-                elif [ -f out/arch/${{ inputs.arch }}/boot/dtb ]; then
+                if [ ${{ inputs.anykernel3 }} = true ] && [ -f out/arch/${{ inputs.arch }}/boot/dtb ]; then
                     cp out/arch/${{ inputs.arch }}/boot/dtb AnyKernel3/ -rv
                 else
                     echo "Failed to copy dtb. File not found."
