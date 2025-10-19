@@ -58,9 +58,6 @@ inputs:
     description: 'Skip kernel patching for KernelSU'
     required: false
     default: false
-  disable-lto:
-    required: false
-    default: false
   lxc:
     required: false
     default: false
@@ -445,16 +442,6 @@ runs:
                 fi
             fi
             echo "::endgroup::"
-        fi
-
-        # Disable LTO if specified
-        if [ "${{ inputs.disable-lto }}" == "true" ]; then
-            if grep -q "LTO" "arch/${{ inputs.arch }}/configs/${{ inputs.config }}"; then
-                sed -i 's/CONFIG_LTO=y/CONFIG_LTO=n/' "arch/${{ inputs.arch }}/configs/${{ inputs.config }}"
-                sed -i 's/CONFIG_LTO_CLANG=y/CONFIG_LTO_CLANG=n/' "arch/${{ inputs.arch }}/configs/${{ inputs.config }}"
-                sed -i 's/CONFIG_THINLTO=y/CONFIG_THINLTO=n/' "arch/${{ inputs.arch }}/configs/${{ inputs.config }}"
-                echo "CONFIG_LTO_NONE=y" >> "arch/${{ inputs.arch }}/configs/${{ inputs.config }}"
-            fi
         fi
 
         # Enable KVM if specified
